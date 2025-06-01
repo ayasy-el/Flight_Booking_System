@@ -36,15 +36,9 @@ message SearchFlightsResponse {
   int32 total_pages = 5;
 }
 
-message PassengerDetails {
-  string name = 1;
-  string email = 2;
-  optional string phone_number = 3;
-}
-
 message CreateBookingRequest {
   string flight_id = 1;
-  PassengerDetails passenger_details = 2;
+  string user_email = 2;
   int32 num_seats = 3;
 }
 
@@ -67,6 +61,5 @@ message GetBookingStatusResponse {
   int32 num_seats = 5;
   double total_price = 6;
   string payment_due_timestamp = 7;
-  repeated PassengerDetails passengers = 8;
-  Flight flight = 9;
+  Flight flight = 8;
 } 

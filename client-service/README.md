@@ -96,11 +96,7 @@ Request Body:
 ```json
 {
   "flight_id": "...",
-  "passenger_details": {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "phone_number": "+1234567890" // optional
-  },
+  "user_email": "john@example.com",
   "num_seats": 1
 }
 ```
@@ -133,13 +129,6 @@ Response:
   "num_seats": 1,
   "total_price": 100.0,
   "payment_due_timestamp": "2024-01-01T12:00:00Z",
-  "passengers": [
-    {
-      "name": "John Doe",
-      "email": "john@example.com",
-      "phone_number": "+1234567890"
-    }
-  ],
   "flight": {
     "id": "...",
     "origin": "...",
@@ -210,18 +199,6 @@ model Booking {
   created_at            DateTime      @default(now())
   updated_at            DateTime      @updatedAt
   flight                Flight        @relation(fields: [flight_id], references: [id])
-  passengers            Passenger[]
-}
-
-model Passenger {
-  id           String   @id @default(cuid())
-  booking_id   String
-  name         String
-  email        String?
-  phone_number String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  booking      Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
 }
 
 enum BookingStatus {

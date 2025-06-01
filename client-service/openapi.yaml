@@ -36,31 +36,18 @@ components:
         available_seats:
           type: integer
 
-    Passenger:
-      type: object
-      required:
-        - name
-        - email
-      properties:
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        phone_number:
-          type: string
-
     BookingRequest:
       type: object
       required:
         - flight_id
-        - passenger_details
+        - user_email
         - num_seats
       properties:
         flight_id:
           type: string
-        passenger_details:
-          $ref: "#/components/schemas/Passenger"
+        user_email:
+          type: string
+          format: email
         num_seats:
           type: integer
           minimum: 1
@@ -99,10 +86,6 @@ components:
         payment_due_timestamp:
           type: string
           format: date-time
-        passengers:
-          type: array
-          items:
-            $ref: "#/components/schemas/Passenger"
         flight:
           $ref: "#/components/schemas/Flight"
 

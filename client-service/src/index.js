@@ -108,11 +108,7 @@ const init = async () => {
       validate: {
         payload: Joi.object({
           flight_id: Joi.string().required(),
-          passenger_details: Joi.object({
-            name: Joi.string().required(),
-            email: Joi.string().email().required(),
-            phone_number: Joi.string().optional(),
-          }).required(),
+          user_email: Joi.string().email().required(),
           num_seats: Joi.number().integer().min(1).required(),
         }),
       },

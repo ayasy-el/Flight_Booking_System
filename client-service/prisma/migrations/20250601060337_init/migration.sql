@@ -33,19 +33,6 @@ CREATE TABLE "Booking" (
     CONSTRAINT "Booking_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Passenger" (
-    "id" TEXT NOT NULL,
-    "booking_id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "email" TEXT,
-    "phone_number" TEXT,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Passenger_pkey" PRIMARY KEY ("id")
-);
-
 -- CreateIndex
 CREATE INDEX "idx_flight_search" ON "Flight"("origin", "destination", "departure_time");
 
@@ -58,11 +45,5 @@ CREATE INDEX "Booking_user_email_idx" ON "Booking"("user_email");
 -- CreateIndex
 CREATE INDEX "Booking_status_payment_due_timestamp_idx" ON "Booking"("status", "payment_due_timestamp");
 
--- CreateIndex
-CREATE INDEX "Passenger_booking_id_idx" ON "Passenger"("booking_id");
-
 -- AddForeignKey
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_flight_id_fkey" FOREIGN KEY ("flight_id") REFERENCES "Flight"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Passenger" ADD CONSTRAINT "Passenger_booking_id_fkey" FOREIGN KEY ("booking_id") REFERENCES "Booking"("id") ON DELETE CASCADE ON UPDATE CASCADE;

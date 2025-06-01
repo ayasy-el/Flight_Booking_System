@@ -13,13 +13,15 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    build: ./rabbitmq
     ports:
       - "5672:5672" # AMQP port
       - "15672:15672" # Management UI port
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -55,7 +57,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/flight_booking
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
-      - PAYMENT_WINDOW_MINUTES=15
+      - PAYMENT_WINDOW_MINUTES=1
       - LOG_LEVEL=info
     volumes:
       - booking_logs:/app/logs
@@ -95,6 +97,7 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq_data:
   client_logs:
   booking_logs:
   payment_logs:

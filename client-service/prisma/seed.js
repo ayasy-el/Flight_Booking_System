@@ -30,7 +30,6 @@ function addHours(date, hours) {
 
 async function main() {
   // Clear existing data
-  await prisma.passenger.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.flight.deleteMany();
 

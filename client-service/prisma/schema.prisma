@@ -46,22 +46,8 @@ model Booking {
   payment_due_timestamp DateTime
   created_at            DateTime      @default(now())
   updated_at            DateTime      @updatedAt
-  passengers            Passenger[]
 
   @@index([flight_id])
   @@index([user_email])
   @@index([status, payment_due_timestamp])
-}
-
-model Passenger {
-  id           String   @id @default(uuid())
-  booking      Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
-  booking_id   String
-  name         String
-  email        String?
-  phone_number String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  @@index([booking_id])
 }

@@ -157,10 +157,7 @@ environment:
      -H "Content-Type: application/json" \
      -d '{
        "flight_id": "your_flight_id",
-       "passenger_details": {
-         "name": "John Doe",
-         "email": "john@example.com"
-       },
+       "user_email": "john@example.com",
        "num_seats": 1
      }'
    ```

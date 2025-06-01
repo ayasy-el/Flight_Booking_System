@@ -23,35 +23,57 @@ const bookingProto = grpc.loadPackageDefinition(packageDefinition).booking;
 // RabbitMQ setup
 let channel;
 const setupRabbitMQ = async () => {
-  try {
-    const connection = await amqp.connect(
-      process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672"
-    );
-    channel = await connection.createChannel();
+  let retries = 0;
+  const maxRetries = 5;
+  const retryInterval = 5000; // 5 seconds
 
-    // Declare exchange
-    await channel.assertExchange("booking_exchange", "direct", { durable: true });
+  while (retries < maxRetries) {
+    try {
+      const connection = await amqp.connect(
+        process.env.RABBITMQ_URL || "amqp://guest:guest@rabbitmq:5672"
+      );
+      channel = await connection.createChannel();
 
-    // Declare queues
-    await channel.assertQueue("payment_request_q", { durable: true });
-    await channel.assertQueue("payment_status_q", { durable: true });
-    await channel.assertQueue("notification_q", { durable: true });
+      // Declare exchanges
+      await channel.assertExchange("booking_exchange", "direct", { durable: true });
+      await channel.assertExchange("booking_expiry_exchange", "x-delayed-message", {
+        durable: true,
+        arguments: { "x-delayed-type": "direct" },
+      });
 
-    // Bind queues to exchange
-    await channel.bindQueue("payment_request_q", "booking_exchange", "payment.request");
-    await channel.bindQueue("payment_status_q", "booking_exchange", "payment.status");
-    await channel.bindQueue("notification_q", "booking_exchange", "notification.pending");
-    await channel.bindQueue("notification_q", "booking_exchange", "notification.success");
-    await channel.bindQueue("notification_q", "booking_exchange", "notification.failed");
-    await channel.bindQueue("notification_q", "booking_exchange", "notification.expired");
+      // Declare queues
+      await channel.assertQueue("payment_request_q", { durable: true });
+      await channel.assertQueue("payment_status_q", { durable: true });
+      await channel.assertQueue("notification_q", { durable: true });
+      await channel.assertQueue("expired_booking_q", { durable: true });
 
-    // Setup payment status consumer
-    await channel.consume("payment_status_q", handlePaymentStatus, { noAck: true });
+      // Bind queues to exchanges
+      await channel.bindQueue("payment_request_q", "booking_exchange", "payment.request");
+      await channel.bindQueue("payment_status_q", "booking_exchange", "payment.status");
+      await channel.bindQueue("notification_q", "booking_exchange", "notification.pending");
+      await channel.bindQueue("notification_q", "booking_exchange", "notification.success");
+      await channel.bindQueue("notification_q", "booking_exchange", "notification.failed");
+      await channel.bindQueue("notification_q", "booking_exchange", "notification.expired");
+      await channel.bindQueue("expired_booking_q", "booking_expiry_exchange", "booking.expired");
 
-    logger.info("RabbitMQ setup completed");
-  } catch (error) {
-    logger.error("Error setting up RabbitMQ:", error);
-    process.exit(1);
+      // Setup consumers
+      await channel.consume("payment_status_q", handlePaymentStatus, { noAck: true });
+      await channel.consume("expired_booking_q", handleExpiredBooking, { noAck: true });
+
+      logger.info("RabbitMQ setup completed successfully");
+      break;
+    } catch (error) {
+      retries++;
+      logger.warn(`Failed to setup RabbitMQ (attempt ${retries}/${maxRetries}):`, error.message);
+
+      if (retries === maxRetries) {
+        logger.error("Max retries reached. Failed to setup RabbitMQ:", error);
+        process.exit(1);
+      }
+
+      logger.info(`Retrying in ${retryInterval / 1000} seconds...`);
+      await new Promise((resolve) => setTimeout(resolve, retryInterval));
+    }
   }
 };
 
@@ -130,6 +152,61 @@ const handlePaymentStatus = async (msg) => {
     }
   } catch (error) {
     logger.error("Error handling payment status:", error);
+  }
+};
+
+// Handle expired bookings
+const handleExpiredBooking = async (msg) => {
+  try {
+    const data = JSON.parse(msg.content.toString());
+    const { booking_id } = data;
+    logger.info(`Processing expired booking: ${booking_id}`);
+
+    // Use transaction to update booking status and restore seats
+    await prisma.$transaction(async (tx) => {
+      const booking = await tx.booking.findUnique({
+        where: { id: booking_id },
+        include: { flight: true },
+      });
+
+      if (!booking || booking.status !== "PENDING_PAYMENT") {
+        return;
+      }
+
+      // Update booking status to EXPIRED
+      await tx.booking.update({
+        where: { id: booking_id },
+        data: { status: "EXPIRED" },
+      });
+
+      // Restore seats
+      await tx.flight.update({
+        where: { id: booking.flight_id },
+        data: {
+          available_seats: {
+            increment: booking.num_seats,
+          },
+        },
+      });
+
+      // Send expired notification
+      await channel.publish(
+        "booking_exchange",
+        "notification.expired",
+        Buffer.from(
+          JSON.stringify({
+            type: "BOOKING_EXPIRED",
+            email_to: booking.user_email,
+            booking_id: booking.id,
+            details: "Booking expired due to no payment.",
+          })
+        )
+      );
+
+      logger.info(`Booking ${booking_id} marked as expired and seats restored`);
+    });
+  } catch (error) {
+    logger.error("Error handling expired booking:", error);
   }
 };
 
@@ -216,10 +293,9 @@ server.addService(bookingProto.BookingService.service, {
   // Create Booking
   CreateBooking: async (call, callback) => {
     try {
-      const { flight_id, passenger_details, num_seats } = call.request;
+      const { flight_id, user_email, num_seats } = call.request;
       logger.info(`Creating booking for flight ${flight_id} - ${num_seats} seats`);
 
-      // Use transaction to ensure data consistency
       const result = await prisma.$transaction(async (tx) => {
         // Get flight and check availability
         const flight = await tx.flight.findUnique({
@@ -245,20 +321,10 @@ server.addService(bookingProto.BookingService.service, {
         const booking = await tx.booking.create({
           data: {
             flight_id,
-            user_email: passenger_details.email,
+            user_email,
             num_seats,
             total_price,
             payment_due_timestamp,
-            passengers: {
-              create: {
-                name: passenger_details.name,
-                email: passenger_details.email,
-                phone_number: passenger_details.phone_number,
-              },
-            },
-          },
-          include: {
-            passengers: true,
           },
         });
 
@@ -272,7 +338,23 @@ server.addService(bookingProto.BookingService.service, {
           },
         });
 
-        logger.info(`Created booking ${booking.id} for flight ${flight_id}`);
+        // Schedule expiry message
+        const paymentWindow = parseInt(process.env.PAYMENT_WINDOW_MINUTES || "15");
+        const delayMs = paymentWindow * 60 * 1000;
+
+        await channel.publish(
+          "booking_expiry_exchange",
+          "booking.expired",
+          Buffer.from(JSON.stringify({ booking_id: booking.id })),
+          {
+            headers: {
+              "x-delay": delayMs,
+            },
+          }
+        );
+
+        logger.info(`Scheduled expiry for booking ${booking.id} in ${paymentWindow} minutes`);
+
         return booking;
       });
 
@@ -333,7 +415,6 @@ server.addService(bookingProto.BookingService.service, {
         where: { id: booking_id },
         include: {
           flight: true,
-          passengers: true,
         },
       });
 
@@ -351,7 +432,6 @@ server.addService(bookingProto.BookingService.service, {
         num_seats: booking.num_seats,
         total_price: booking.total_price,
         payment_due_timestamp: booking.payment_due_timestamp.toISOString(),
-        passengers: booking.passengers,
         flight: booking.flight,
       });
     } catch (error) {
