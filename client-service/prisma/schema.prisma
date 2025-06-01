@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  FAILED_PAYMENT
+  CANCELLED
+  EXPIRED
+}
+
+model Flight {
+  id              String    @id @default(uuid())
+  airline         String
+  origin          String
+  destination     String
+  departure_time  DateTime
+  arrival_time    DateTime
+  price_per_seat  Decimal
+  total_seats     Int
+  available_seats Int
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  bookings        Booking[]
+
+  @@index([origin, destination, departure_time], name: "idx_flight_search")
+}
+
+model Booking {
+  id                    String        @id @default(uuid())
+  flight                Flight        @relation(fields: [flight_id], references: [id])
+  flight_id             String
+  user_email            String
+  num_seats             Int
+  total_price           Decimal
+  status                BookingStatus @default(PENDING_PAYMENT)
+  payment_due_timestamp DateTime
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+  passengers            Passenger[]
+
+  @@index([flight_id])
+  @@index([user_email])
+  @@index([status, payment_due_timestamp])
+}
+
+model Passenger {
+  id           String   @id @default(uuid())
+  booking      Booking  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  booking_id   String
+  name         String
+  email        String?
+  phone_number String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([booking_id])
+}

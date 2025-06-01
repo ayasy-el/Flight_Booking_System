@@ -1,0 +1,101 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: flight_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+
+  client-service:
+    build: ./client-service
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/flight_booking
+      - BOOKING_SERVICE_URL=booking-service:50051
+      - LOG_LEVEL=info
+    volumes:
+      - client_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_started
+      booking-service:
+        condition: service_started
+
+  booking-service:
+    build: ./booking-service
+    ports:
+      - "50051:50051"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/flight_booking
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - PAYMENT_WINDOW_MINUTES=15
+      - LOG_LEVEL=info
+    volumes:
+      - booking_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  payment-service:
+    build: ./payment-service
+    stdin_open: true # docker run -i
+    tty: true # docker run -t
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - LOG_LEVEL=info
+    volumes:
+      - payment_logs:/app/logs
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    build: ./notification-service
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - LOG_LEVEL=info
+    volumes:
+      - notification_logs:/app/logs
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  client_logs:
+  booking_logs:
+  payment_logs:
+  notification_logs:

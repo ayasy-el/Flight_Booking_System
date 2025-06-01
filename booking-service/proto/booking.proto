@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package booking;
+
+service BookingService {
+  rpc SearchFlights (SearchFlightsRequest) returns (SearchFlightsResponse);
+  rpc CreateBooking (CreateBookingRequest) returns (CreateBookingResponse);
+  rpc GetBookingStatus (GetBookingStatusRequest) returns (GetBookingStatusResponse);
+}
+
+message Flight {
+  string id = 1;
+  string airline = 2;
+  string origin = 3;
+  string destination = 4;
+  string departure_time = 5;
+  string arrival_time = 6;
+  double price_per_seat = 7;
+  int32 total_seats = 8;
+  int32 available_seats = 9;
+}
+
+message SearchFlightsRequest {
+  string origin = 1;
+  string destination = 2;
+  string date = 3;
+  int32 limit = 4;
+  int32 page = 5;
+}
+
+message SearchFlightsResponse {
+  repeated Flight flights = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+  int32 total_pages = 5;
+}
+
+message PassengerDetails {
+  string name = 1;
+  string email = 2;
+  optional string phone_number = 3;
+}
+
+message CreateBookingRequest {
+  string flight_id = 1;
+  PassengerDetails passenger_details = 2;
+  int32 num_seats = 3;
+}
+
+message CreateBookingResponse {
+  string booking_id = 1;
+  string status = 2;
+  string payment_due_timestamp = 3;
+  double total_price = 4;
+}
+
+message GetBookingStatusRequest {
+  string booking_id = 1;
+}
+
+message GetBookingStatusResponse {
+  string booking_id = 1;
+  string status = 2;
+  string flight_id = 3;
+  string user_email = 4;
+  int32 num_seats = 5;
+  double total_price = 6;
+  string payment_due_timestamp = 7;
+  repeated PassengerDetails passengers = 8;
+  Flight flight = 9;
+} 

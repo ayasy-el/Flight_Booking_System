@@ -1,0 +1,255 @@
+openapi: 3.0.0
+info:
+  title: Flight Booking System API
+  version: 1.0.0
+  description: API for flight booking system with search, booking, and status check capabilities
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+components:
+  schemas:
+    Flight:
+      type: object
+      properties:
+        id:
+          type: string
+        airline:
+          type: string
+          description: Name of the airline
+        origin:
+          type: string
+        destination:
+          type: string
+        departure_time:
+          type: string
+          format: date-time
+        arrival_time:
+          type: string
+          format: date-time
+        price_per_seat:
+          type: number
+          format: float
+        total_seats:
+          type: integer
+        available_seats:
+          type: integer
+
+    Passenger:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone_number:
+          type: string
+
+    BookingRequest:
+      type: object
+      required:
+        - flight_id
+        - passenger_details
+        - num_seats
+      properties:
+        flight_id:
+          type: string
+        passenger_details:
+          $ref: "#/components/schemas/Passenger"
+        num_seats:
+          type: integer
+          minimum: 1
+
+    BookingResponse:
+      type: object
+      properties:
+        booking_id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING_PAYMENT, CONFIRMED, FAILED_PAYMENT, CANCELLED, EXPIRED]
+        payment_due_timestamp:
+          type: string
+          format: date-time
+        total_price:
+          type: number
+          format: float
+
+    BookingStatus:
+      type: object
+      properties:
+        booking_id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING_PAYMENT, CONFIRMED, FAILED_PAYMENT, CANCELLED, EXPIRED]
+        flight_id:
+          type: string
+        user_email:
+          type: string
+        num_seats:
+          type: integer
+        total_price:
+          type: number
+        payment_due_timestamp:
+          type: string
+          format: date-time
+        passengers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Passenger"
+        flight:
+          $ref: "#/components/schemas/Flight"
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    SearchResponse:
+      type: object
+      properties:
+        flights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flight"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+
+paths:
+  /schedules:
+    get:
+      summary: Search for available flights
+      parameters:
+        - name: origin
+          in: query
+          schema:
+            type: string
+        - name: destination
+          in: query
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        "200":
+          description: List of available flights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /bookings:
+    post:
+      summary: Create a new booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequest"
+      responses:
+        "200":
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Flight not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Not enough seats available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /bookings/{bookingId}:
+    get:
+      summary: Get booking status
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Booking status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingStatus"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
