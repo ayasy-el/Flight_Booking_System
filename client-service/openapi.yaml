@@ -1,148 +1,54 @@
-openapi: 3.0.0
+openapi: 3.0.1
 info:
-  title: Flight Booking System API
+  title: Fligh_Booking_System
+  description: ""
   version: 1.0.0
-  description: API for flight booking system with search, booking, and status check capabilities
-
-servers:
-  - url: http://localhost:3000
-    description: Local development server
-
-components:
-  schemas:
-    Flight:
-      type: object
-      properties:
-        id:
-          type: string
-        airline:
-          type: string
-          description: Name of the airline
-        origin:
-          type: string
-        destination:
-          type: string
-        departure_time:
-          type: string
-          format: date-time
-        arrival_time:
-          type: string
-          format: date-time
-        price_per_seat:
-          type: number
-          format: float
-        total_seats:
-          type: integer
-        available_seats:
-          type: integer
-
-    BookingRequest:
-      type: object
-      required:
-        - flight_id
-        - user_email
-        - num_seats
-      properties:
-        flight_id:
-          type: string
-        user_email:
-          type: string
-          format: email
-        num_seats:
-          type: integer
-          minimum: 1
-
-    BookingResponse:
-      type: object
-      properties:
-        booking_id:
-          type: string
-        status:
-          type: string
-          enum: [PENDING_PAYMENT, CONFIRMED, FAILED_PAYMENT, CANCELLED, EXPIRED]
-        payment_due_timestamp:
-          type: string
-          format: date-time
-        total_price:
-          type: number
-          format: float
-
-    BookingStatus:
-      type: object
-      properties:
-        booking_id:
-          type: string
-        status:
-          type: string
-          enum: [PENDING_PAYMENT, CONFIRMED, FAILED_PAYMENT, CANCELLED, EXPIRED]
-        flight_id:
-          type: string
-        user_email:
-          type: string
-        num_seats:
-          type: integer
-        total_price:
-          type: number
-        payment_due_timestamp:
-          type: string
-          format: date-time
-        flight:
-          $ref: "#/components/schemas/Flight"
-
-    Error:
-      type: object
-      properties:
-        statusCode:
-          type: integer
-        error:
-          type: string
-        message:
-          type: string
-        details:
-          type: object
-
-    SearchResponse:
-      type: object
-      properties:
-        flights:
-          type: array
-          items:
-            $ref: "#/components/schemas/Flight"
-        total:
-          type: integer
-        page:
-          type: integer
-        limit:
-          type: integer
-        total_pages:
-          type: integer
-
+tags:
+  - name: flights
+  - name: bookings
 paths:
   /schedules:
     get:
-      summary: Search for available flights
+      summary: Search available flights
+      deprecated: false
+      description: Search for flights based on origin, destination, and date
+      tags:
+        - flights
       parameters:
         - name: origin
           in: query
+          description: Departure city
+          required: false
+          example: Jakarta
           schema:
             type: string
         - name: destination
           in: query
+          description: Arrival city
+          required: false
+          example: Surabaya
           schema:
             type: string
         - name: date
           in: query
+          description: Flight date (ISO 8601 format)
+          required: false
+          example: "2024-01-01"
           schema:
             type: string
             format: date
         - name: limit
           in: query
+          description: Number of results per page
+          required: false
           schema:
             type: integer
             minimum: 1
             default: 10
         - name: page
           in: query
+          description: Page number for pagination
+          required: false
           schema:
             type: integer
             minimum: 1
@@ -153,86 +59,620 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SearchResponse"
+                type: object
+                properties:
+                  flights:
+                    type: array
+                    items: &ref_0
+                      $ref: "#/components/schemas/Flight"
+                  total:
+                    type: integer
+                    description: Total number of flights matching the criteria
+                  page:
+                    type: integer
+                    description: Current page number
+                  limit:
+                    type: integer
+                    description: Number of results per page
+                  total_pages:
+                    type: integer
+                    description: Total number of pages
+                required:
+                  - flights
+                  - total
+                  - page
+                  - limit
+                  - total_pages
+              example:
+                flights:
+                  - id: bd67c4cc-14c4-4678-9738-5c8267d2301f
+                    airline: Citilink
+                    origin: Jakarta
+                    destination: Surabaya
+                    departure_time: >-
+                      Mon Jun 02 2025 08:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    arrival_time: >-
+                      Mon Jun 02 2025 10:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    price_per_seat: 1600000
+                    total_seats: 180
+                    available_seats: 180
+                  - id: 75e1373d-287f-46f2-853a-601fcaa8e719
+                    airline: Batik Air
+                    origin: Jakarta
+                    destination: Surabaya
+                    departure_time: >-
+                      Sat Jun 14 2025 08:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    arrival_time: >-
+                      Sat Jun 14 2025 10:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    price_per_seat: 900000
+                    total_seats: 180
+                    available_seats: 180
+                total: 2
+                page: 1
+                limit: 10
+                total_pages: 1
+          headers: {}
         "400":
-          description: Invalid request parameters
+          description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 400
+                  error:
+                    type: string
+                    examples:
+                      - Bad Request
+                  message:
+                    type: string
+                    examples:
+                      - Invalid input data
+          headers: {}
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 500
+                  error:
+                    type: string
+                    examples:
+                      - Internal Server Error
+                  message:
+                    type: string
+                    examples:
+                      - An internal server error occurred
+          headers: {}
+      security: []
   /bookings:
     post:
       summary: Create a new booking
+      deprecated: false
+      description: Create a new flight booking for one or more passengers
+      tags:
+        - bookings
+      parameters: []
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/BookingRequest"
+              type: object
+              properties:
+                flight_id:
+                  type: string
+                user_email:
+                  type: string
+                num_seats:
+                  type: integer
+                  description: Number of seats to book
+              required:
+                - flight_id
+                - user_email
+                - num_seats
+            example:
+              flight_id: 4c16b769-3bfd-473e-b11a-1f2d0dad6e48
+              user_email: William.Runte@gmail.com
+              num_seats: 5
       responses:
         "200":
           description: Booking created successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BookingResponse"
+                type: object
+                properties:
+                  booking_id:
+                    type: string
+                  status:
+                    type: string
+                  payment_due_timestamp:
+                    type: string
+                  total_price:
+                    type: integer
+                required:
+                  - booking_id
+                  - status
+                  - payment_due_timestamp
+                  - total_price
+              example:
+                booking_id: e28bbe79-4b51-4e92-b8d0-1197ce15da88
+                status: PENDING_PAYMENT
+                payment_due_timestamp: "2025-06-01T06:29:34.114Z"
+                total_price: 3200000
+          headers: {}
         "400":
-          description: Invalid request payload
+          description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 400
+                  error:
+                    type: string
+                    examples:
+                      - Bad Request
+                  message:
+                    type: string
+                    examples:
+                      - Invalid input data
+          headers: {}
         "404":
-          description: Flight not found
+          description: Resource not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "412":
-          description: Not enough seats available
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 404
+                  error:
+                    type: string
+                    examples:
+                      - Not Found
+                  message:
+                    type: string
+                    examples:
+                      - Resource not found
+          headers: {}
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
-  /bookings/{bookingId}:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 500
+                  error:
+                    type: string
+                    examples:
+                      - Internal Server Error
+                  message:
+                    type: string
+                    examples:
+                      - An internal server error occurred
+          headers: {}
+      security: []
     get:
-      summary: Get booking status
+      summary: Get User's Bookings
+      deprecated: false
+      description: ""
+      tags: []
       parameters:
-        - name: bookingId
-          in: path
-          required: true
+        - name: x-user-email
+          in: header
+          description: ""
+          required: false
+          example: Coy.Weimann@yahoo.com
           schema:
             type: string
       responses:
         "200":
-          description: Booking status retrieved successfully
+          description: ""
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BookingStatus"
+                type: array
+                items:
+                  type: object
+                  properties:
+                    booking_id:
+                      type: string
+                    status:
+                      type: string
+                    flight_id:
+                      type: string
+                    user_email:
+                      type: string
+                    num_seats:
+                      type: integer
+                    total_price:
+                      type: integer
+                    payment_due_timestamp:
+                      type: string
+                    flight:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        airline:
+                          type: string
+                        origin:
+                          type: string
+                        destination:
+                          type: string
+                        departure_time:
+                          type: string
+                        arrival_time:
+                          type: string
+                        price_per_seat:
+                          type: integer
+                        total_seats:
+                          type: integer
+                        available_seats:
+                          type: integer
+                      required:
+                        - id
+                        - airline
+                        - origin
+                        - destination
+                        - departure_time
+                        - arrival_time
+                        - price_per_seat
+                        - total_seats
+                        - available_seats
+                  required:
+                    - booking_id
+                    - status
+                    - flight_id
+                    - user_email
+                    - num_seats
+                    - total_price
+                    - payment_due_timestamp
+                    - flight
+              example:
+                - booking_id: a0d5edfb-e7eb-40b7-8804-2a6560f0f671
+                  status: EXPIRED
+                  flight_id: 517ade45-73c2-423e-ac59-d27dab829940
+                  user_email: Coy.Weimann@yahoo.com
+                  num_seats: 3
+                  total_price: 2700000
+                  payment_due_timestamp: "2025-06-02T07:42:39.247Z"
+                  flight:
+                    id: 517ade45-73c2-423e-ac59-d27dab829940
+                    airline: Citilink
+                    origin: Jakarta
+                    destination: Surabaya
+                    departure_time: >-
+                      Wed Jun 25 2025 02:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    arrival_time: >-
+                      Wed Jun 25 2025 04:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    price_per_seat: 900000
+                    total_seats: 180
+                    available_seats: 180
+                - booking_id: 0145f6fc-51fc-4cfa-9bcf-fcb1069cebc6
+                  status: EXPIRED
+                  flight_id: 517ade45-73c2-423e-ac59-d27dab829940
+                  user_email: Coy.Weimann@yahoo.com
+                  num_seats: 3
+                  total_price: 2700000
+                  payment_due_timestamp: "2025-06-02T07:45:11.567Z"
+                  flight:
+                    id: 517ade45-73c2-423e-ac59-d27dab829940
+                    airline: Citilink
+                    origin: Jakarta
+                    destination: Surabaya
+                    departure_time: >-
+                      Wed Jun 25 2025 02:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    arrival_time: >-
+                      Wed Jun 25 2025 04:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    price_per_seat: 900000
+                    total_seats: 180
+                    available_seats: 180
+                - booking_id: 5442e930-b720-4cdc-be2c-3364dbb25171
+                  status: EXPIRED
+                  flight_id: 517ade45-73c2-423e-ac59-d27dab829940
+                  user_email: Coy.Weimann@yahoo.com
+                  num_seats: 3
+                  total_price: 2700000
+                  payment_due_timestamp: "2025-06-02T07:45:13.242Z"
+                  flight:
+                    id: 517ade45-73c2-423e-ac59-d27dab829940
+                    airline: Citilink
+                    origin: Jakarta
+                    destination: Surabaya
+                    departure_time: >-
+                      Wed Jun 25 2025 02:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    arrival_time: >-
+                      Wed Jun 25 2025 04:00:00 GMT+0000 (Coordinated Universal
+                      Time)
+                    price_per_seat: 900000
+                    total_seats: 180
+                    available_seats: 180
+          headers: {}
+      security: []
+  /bookings/{bookingId}:
+    get:
+      summary: Get booking status
+      deprecated: false
+      description: Retrieve the current status and details of a booking
+      tags:
+        - bookings
+      parameters:
+        - name: bookingId
+          in: path
+          description: Booking ID
+          required: true
+          example: ""
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Booking details retrieved successfully
+          content:
+            application/json:
+              schema:
+                properties:
+                  booking_id:
+                    type: string
+                  status:
+                    type: string
+                  flight_id:
+                    type: string
+                  user_email:
+                    type: string
+                  num_seats:
+                    type: integer
+                  total_price:
+                    type: integer
+                  payment_due_timestamp:
+                    type: string
+                  flight:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      airline:
+                        type: string
+                      origin:
+                        type: string
+                      destination:
+                        type: string
+                      departure_time:
+                        type: string
+                      arrival_time:
+                        type: string
+                      price_per_seat:
+                        type: integer
+                      total_seats:
+                        type: integer
+                      available_seats:
+                        type: integer
+                    required:
+                      - id
+                      - airline
+                      - origin
+                      - destination
+                      - departure_time
+                      - arrival_time
+                      - price_per_seat
+                      - total_seats
+                      - available_seats
+                required:
+                  - booking_id
+                  - status
+                  - flight_id
+                  - user_email
+                  - num_seats
+                  - total_price
+                  - payment_due_timestamp
+                  - flight
+                $ref: "#/components/schemas/BookingDetails"
+              example:
+                booking_id: e28bbe79-4b51-4e92-b8d0-1197ce15da88
+                status: PENDING_PAYMENT
+                flight_id: bd67c4cc-14c4-4678-9738-5c8267d2301f
+                user_email: Marlene_Towne@hotmail.com
+                num_seats: 2
+                total_price: 3200000
+                payment_due_timestamp: "2025-06-01T06:29:34.114Z"
+                flight:
+                  id: bd67c4cc-14c4-4678-9738-5c8267d2301f
+                  airline: Citilink
+                  origin: Jakarta
+                  destination: Surabaya
+                  departure_time: >-
+                    Mon Jun 02 2025 08:00:00 GMT+0000 (Coordinated Universal
+                    Time)
+                  arrival_time: >-
+                    Mon Jun 02 2025 10:00:00 GMT+0000 (Coordinated Universal
+                    Time)
+                  price_per_seat: 1600000
+                  total_seats: 180
+                  available_seats: 178
+          headers: {}
         "404":
-          description: Booking not found
+          description: Resource not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 404
+                  error:
+                    type: string
+                    examples:
+                      - Not Found
+                  message:
+                    type: string
+                    examples:
+                      - Resource not found
+          headers: {}
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    examples:
+                      - 500
+                  error:
+                    type: string
+                    examples:
+                      - Internal Server Error
+                  message:
+                    type: string
+                    examples:
+                      - An internal server error occurred
+          headers: {}
+      security: []
+components:
+  schemas:
+    Flight:
+      type: object
+      properties:
+        id:
+          type: string
+        airline:
+          type: string
+        origin:
+          type: string
+        destination:
+          type: string
+        departure_time:
+          type: string
+        arrival_time:
+          type: string
+        price_per_seat:
+          type: integer
+        total_seats:
+          type: integer
+        available_seats:
+          type: integer
+      required:
+        - id
+        - airline
+        - origin
+        - destination
+        - departure_time
+        - arrival_time
+        - price_per_seat
+        - total_seats
+        - available_seats
+    BookingDetails:
+      type: object
+      properties:
+        booking_id:
+          type: string
+        status:
+          type: string
+        flight_id:
+          type: string
+        user_email:
+          type: string
+        num_seats:
+          type: integer
+        total_price:
+          type: integer
+        payment_due_timestamp:
+          type: string
+        flight: *ref_0
+      required:
+        - booking_id
+        - status
+        - flight_id
+        - user_email
+        - num_seats
+        - total_price
+        - payment_due_timestamp
+        - flight
+    BookingStatus:
+      type: string
+      enum:
+        - PENDING_PAYMENT
+        - CONFIRMED
+        - FAILED_PAYMENT
+        - CANCELLED
+        - EXPIRED
+    BadRequest:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          examples:
+            - 400
+        error:
+          type: string
+          examples:
+            - Bad Request
+        message:
+          type: string
+          examples:
+            - Invalid input data
+    NotFound:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          examples:
+            - 404
+        error:
+          type: string
+          examples:
+            - Not Found
+        message:
+          type: string
+          examples:
+            - Resource not found
+    InternalError:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          examples:
+            - 500
+        error:
+          type: string
+          examples:
+            - Internal Server Error
+        message:
+          type: string
+          examples:
+            - An internal server error occurred
+  securitySchemes: {}
+servers:
+  - url: http://localhost:3000
+    description: Develop Env

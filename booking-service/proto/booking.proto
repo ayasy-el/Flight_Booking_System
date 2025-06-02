@@ -6,6 +6,7 @@ service BookingService {
   rpc SearchFlights (SearchFlightsRequest) returns (SearchFlightsResponse);
   rpc CreateBooking (CreateBookingRequest) returns (CreateBookingResponse);
   rpc GetBookingStatus (GetBookingStatusRequest) returns (GetBookingStatusResponse);
+  rpc GetUserBookings (GetUserBookingsRequest) returns (GetUserBookingsResponse);
 }
 
 message Flight {
@@ -63,3 +64,11 @@ message GetBookingStatusResponse {
   string payment_due_timestamp = 7;
   Flight flight = 8;
 } 
+
+message GetUserBookingsRequest {
+  string user_email = 1;
+}
+
+message GetUserBookingsResponse {
+  repeated GetBookingStatusResponse user_bookings = 1;
+}

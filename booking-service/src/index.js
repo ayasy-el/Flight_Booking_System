@@ -443,6 +443,38 @@ server.addService(bookingProto.BookingService.service, {
       }
     }
   },
+
+  // Get User's Bookings
+  GetUserBookings: async (call, callback) => {
+    try {
+      const { user_email } = call.request;
+      logger.info(`Fetching bookings for user ${user_email}`);
+
+      const bookings = await prisma.booking.findMany({
+        where: { user_email },
+        include: { flight: true },
+      });
+
+      const formattedBookings = bookings.map((booking) => ({
+        booking_id: booking.id,
+        status: booking.status,
+        flight_id: booking.flight_id,
+        user_email: booking.user_email,
+        num_seats: booking.num_seats,
+        total_price: booking.total_price,
+        payment_due_timestamp: booking.payment_due_timestamp.toISOString(),
+        flight: booking.flight,
+      }));
+
+      logger.info(`Found ${bookings.length} bookings for user ${user_email}`);
+      callback(null, {
+        user_bookings: formattedBookings,
+      });
+    } catch (error) {
+      logger.error("Error fetching user bookings:", error);
+      callback(createGrpcError(grpc.status.INTERNAL, "Error fetching user bookings"));
+    }
+  },
 });
 
 // Start the server

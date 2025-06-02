@@ -67,6 +67,12 @@ const init = async () => {
   const server = Hapi.server({
     port: process.env.PORT || 3000,
     host: "0.0.0.0",
+    routes: {
+      cors: {
+        origin: ["*"],
+        additionalHeaders: ["x-user-email"],
+      },
+    },
   });
 
   // Search Flights Route
@@ -122,6 +128,49 @@ const init = async () => {
         );
         logger.info(`Booking created with ID: ${response.booking_id}`);
         return response;
+      } catch (error) {
+        const errorResponse = handleGrpcError(error);
+        return h.response(errorResponse).code(errorResponse.statusCode);
+      }
+    },
+  });
+
+  // Get User's Bookings
+  server.route({
+    method: "GET",
+    path: "/bookings",
+    options: {
+      validate: {
+        headers: Joi.object({
+          "x-user-email": Joi.string().email().required(),
+        }).unknown(),
+      },
+    },
+    handler: async (request, h) => {
+      try {
+        const user_email = request.headers["x-user-email"];
+        logger.info(`Fetching bookings for user ${user_email}`);
+        const response = await promisifyGrpcCall(
+          bookingClient.GetUserBookings.bind(bookingClient),
+          { user_email }
+        );
+
+        logger.info(`Found ${response.user_bookings?.length || 0} bookings`);
+        const formattedBookings = response.user_bookings.map((booking) => ({
+          booking_id: booking.booking_id,
+          status: booking.status,
+          flight: {
+            id: booking.flight.id,
+            name: booking.flight.name,
+            price: booking.flight.price,
+            departure_time: booking.flight.departure_time,
+            arrival_time: booking.flight.arrival_time,
+            origin: booking.flight.origin,
+            destination: booking.flight.destination,
+          },
+          total_price: booking.total_price,
+        }));
+        return formattedBookings;
       } catch (error) {
         const errorResponse = handleGrpcError(error);
         return h.response(errorResponse).code(errorResponse.statusCode);
