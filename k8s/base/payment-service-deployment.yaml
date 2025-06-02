@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      initContainers:
+        - name: wait-for-rabbitmq
+          image: busybox:1.28
+          command:
+            ["sh", "-c", "until nc -z rabbitmq 5672; do echo waiting for rabbitmq; sleep 2; done;"]
+      containers:
+        - name: payment-service
+          image: payment-service:latest
+          imagePullPolicy: Never
+          env:
+            - name: RABBITMQ_URL
+              value: amqp://guest:guest@rabbitmq:5672
+            - name: LOG_LEVEL
+              value: info
+          stdin: true
+          tty: true

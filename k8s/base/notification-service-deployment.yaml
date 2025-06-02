@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      initContainers:
+        - name: wait-for-rabbitmq
+          image: busybox:1.28
+          command:
+            ["sh", "-c", "until nc -z rabbitmq 5672; do echo waiting for rabbitmq; sleep 2; done;"]
+        - name: wait-for-mailpit
+          image: busybox:1.28
+          command:
+            ["sh", "-c", "until nc -z mailpit 1025; do echo waiting for mailpit; sleep 2; done;"]
+      containers:
+        - name: notification-service
+          image: notification-service:latest
+          imagePullPolicy: Never
+          env:
+            - name: RABBITMQ_URL
+              value: amqp://guest:guest@rabbitmq:5672
+            - name: SMTP_HOST
+              value: mailpit
+            - name: SMTP_PORT
+              value: "1025"
+            - name: LOG_LEVEL
+              value: info
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: notification-service
