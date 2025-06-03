@@ -28,6 +28,13 @@ function addHours(date, hours) {
   return newDate;
 }
 
+toUTCDate = (date, hour) => {
+  // Membuat date UTC dengan jam tertentu
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, 0, 0)
+  );
+};
+
 async function main() {
   // Clear existing data
   await prisma.booking.deleteMany();
@@ -42,7 +49,7 @@ async function main() {
 
   for (let day = 0; day < 30; day++) {
     const currentDate = new Date(startDate);
-    currentDate.setDate(currentDate.getDate() + day);
+    currentDate.setUTCDate(currentDate.getUTCDate() + day);
 
     // Create 5 flights per day
     for (let i = 0; i < 5; i++) {
@@ -52,9 +59,7 @@ async function main() {
         destination = getRandomElement(cities);
       } while (destination === origin);
 
-      const departureTime = new Date(currentDate);
-      departureTime.setHours(6 + i * 3); // Flights at 6AM, 9AM, 12PM, 3PM, 6PM
-
+      const departureTime = toUTCDate(currentDate, 6 + i * 3); // UTC jam 6, 9, 12, 15, 18
       const flight = {
         airline: getRandomElement(airlines),
         origin,
@@ -65,7 +70,6 @@ async function main() {
         total_seats: 180,
         available_seats: 180,
       };
-
       flights.push(flight);
     }
   }

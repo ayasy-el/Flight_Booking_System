@@ -233,8 +233,8 @@ server.addService(bookingProto.BookingService.service, {
 
       // Build where clause
       const where = {};
-      if (origin) where.origin = origin;
-      if (destination) where.destination = destination;
+      if (origin) where.origin = { equals: origin, mode: "insensitive" };
+      if (destination) where.destination = { equals: destination, mode: "insensitive" };
       if (date) {
         const searchDate = new Date(date);
         if (isNaN(searchDate.getTime())) {
@@ -271,7 +271,15 @@ server.addService(bookingProto.BookingService.service, {
       // Format the response
       const formattedFlights = flights.map((flight) => ({
         ...flight,
-        price_per_seat: parseFloat(flight.price_per_seat.toString()), // Convert Decimal to float
+        price_per_seat: parseFloat(flight.price_per_seat.toString()),
+        departure_time:
+          flight.departure_time instanceof Date
+            ? flight.departure_time.toISOString()
+            : flight.departure_time,
+        arrival_time:
+          flight.arrival_time instanceof Date
+            ? flight.arrival_time.toISOString()
+            : flight.arrival_time,
       }));
 
       const total_pages = Math.ceil(total / limit);
@@ -432,7 +440,17 @@ server.addService(bookingProto.BookingService.service, {
         num_seats: booking.num_seats,
         total_price: booking.total_price,
         payment_due_timestamp: booking.payment_due_timestamp.toISOString(),
-        flight: booking.flight,
+        flight: {
+          ...booking.flight,
+          departure_time:
+            booking.flight.departure_time instanceof Date
+              ? booking.flight.departure_time.toISOString()
+              : booking.flight.departure_time,
+          arrival_time:
+            booking.flight.arrival_time instanceof Date
+              ? booking.flight.arrival_time.toISOString()
+              : booking.flight.arrival_time,
+        },
       });
     } catch (error) {
       logger.error("Error getting booking status:", error);
@@ -463,7 +481,17 @@ server.addService(bookingProto.BookingService.service, {
         num_seats: booking.num_seats,
         total_price: booking.total_price,
         payment_due_timestamp: booking.payment_due_timestamp.toISOString(),
-        flight: booking.flight,
+        flight: {
+          ...booking.flight,
+          departure_time:
+            booking.flight.departure_time instanceof Date
+              ? booking.flight.departure_time.toISOString()
+              : booking.flight.departure_time,
+          arrival_time:
+            booking.flight.arrival_time instanceof Date
+              ? booking.flight.arrival_time.toISOString()
+              : booking.flight.arrival_time,
+        },
       }));
 
       logger.info(`Found ${bookings.length} bookings for user ${user_email}`);
