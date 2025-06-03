@@ -161,7 +161,7 @@ const init = async () => {
           status: booking.status,
           flight: {
             id: booking.flight.id,
-            name: booking.flight.name,
+            name: booking.flight.airline,
             price: booking.flight.price,
             departure_time: booking.flight.departure_time,
             arrival_time: booking.flight.arrival_time,
