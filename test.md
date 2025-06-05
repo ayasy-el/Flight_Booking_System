@@ -31,11 +31,11 @@
 3. Port-forward services for local access:
    ```bash
    # Client Service API
-   kubectl port-forward svc/client-service 3000:3000 &
+   kubectl port-forward --address 0.0.0.0 svc/client-service 3000:3000 &
    # RabbitMQ Management UI
-   kubectl port-forward svc/rabbitmq 15672:15672 &
+   kubectl port-forward --address 0.0.0.0 svc/rabbitmq 15672:15672 &
    # Mailpit Web UI
-   kubectl port-forward svc/mailpit 8025:8025 &
+   kubectl port-forward --address 0.0.0.0 svc/mailpit 8025:8025 &
    ```
 
 ## Test Scenarios
